@@ -22,7 +22,7 @@ const VoiceControl = () => {
         const command = text.toLowerCase().trim();
 
         // 구글 접속 명령
-        if (command.includes('구글로 접속') || command.includes('구글 검색')) {
+        if (command.includes('유튜브로 접속') || command.includes('유튜브 검색')) {
             setLoadingType('connect');
             setShowLoadingAnimation(true);
             setTimeout(() => {
@@ -30,7 +30,7 @@ const VoiceControl = () => {
             }, 300);
 
             setTimeout(() => {
-                window.open('https://www.google.com', '_blank');
+                window.open('https://www.youtube.com', '_blank');
                 setIsLoading(false);
                 setShowLoadingAnimation(false);
             }, 3000);
@@ -54,7 +54,7 @@ const VoiceControl = () => {
                 }, 300);
 
                 setTimeout(() => {
-                    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                    const searchUrl = `https://www.youtube.com/search?q=${encodeURIComponent(query)}`;
                     window.open(searchUrl, '_blank');
                     setIsLoading(false);
                     setShowLoadingAnimation(false);
