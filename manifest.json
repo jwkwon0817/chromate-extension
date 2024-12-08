@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Voice Control Extension",
+  "version": "1.0.0",
+  "description": "음성 제어를 통한 웹 브라우저 제어 확장 프로그램",
+  "permissions": [
+    "tabs",
+    "activeTab"
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_width": 500,
+    "default_height": 680
+  },
+  "background": {
+    "service_worker": "background.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.ts"]
+    }
+  ]
+}
