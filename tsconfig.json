@@ -2,20 +2,26 @@
   "compilerOptions": {
     "target": "ES6",
     "module": "ESNext",
-    "outDir": "./dist",    // 빌드된 파일을 저장할 디렉토리
-    "rootDir": "./src",    // 소스 파일이 위치하는 디렉토리
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",        // JSX 지원 추가
     "esModuleInterop": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],  // 브라우저 API 타입 추가
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true
   },
   "include": [
-    "src/**/*.ts"  // 소스 파일의 위치
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ],
   "exclude": [
-    "node_modules"  // 빌드 시 제외할 디렉토리
+    "node_modules"
   ],
   "references": [
-    { "path": "./tsconfig.app.json" },   // tsconfig.app.json을 참조
-    { "path": "./tsconfig.node.json" }   // tsconfig.node.json을 참조
+    { "path": "./tsconfig.node.json" }
   ]
 }

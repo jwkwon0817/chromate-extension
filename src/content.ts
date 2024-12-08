@@ -18,10 +18,21 @@ function handleCommand(command: string) {
     }
 }
 
-// 음성 명령을 받아서 처리
+// 스크롤 처리 함수
+function handleScroll(direction: 'up' | 'down') {
+    const scrollAmount = window.innerHeight * 0.8; // 화면 높이의 80%만큼 스크롤
+    window.scrollBy({
+        top: direction === 'up' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+    });
+}
+
+// 메시지 리스너
 chrome.runtime.onMessage.addListener((request) => {
     if (request.type === 'VOICE_COMMAND') {
-        handleCommand(request.command);  // 음성 명령에 맞는 작업 실행
+        handleCommand(request.command);
+    } else if (request.type === 'SCROLL_PAGE') {
+        handleScroll(request.direction);
     }
     return true;
 });

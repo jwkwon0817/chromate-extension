@@ -15,51 +15,73 @@ const VoiceControl = () => {
     const [recognition, setRecognition] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
-    const [loadingType, setLoadingType] = useState<'connect' | 'search'>('connect');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [loadingType, setLoadingType] = useState<string>('');
 
-    const handleCommand = (text: string) => {
+    const handleCommand = async (text: string) => {
         const command = text.toLowerCase().trim();
 
-        // 구글 접속 명령
-        if (command.includes('유튜브로 접속') || command.includes('유튜브 검색')) {
-            setLoadingType('connect');
-            setShowLoadingAnimation(true);
-            setTimeout(() => {
-                setIsLoading(true);
-            }, 300);
+        setShowLoadingAnimation(true);
+        setIsLoading(true);
 
-            setTimeout(() => {
-                window.open('https://www.youtube.com', '_blank');
-                setIsLoading(false);
-                setShowLoadingAnimation(false);
-            }, 3000);
-        }
-        // 검색 명령
-        else if (command.includes('검색') || command.includes('찾아')) {
-            let query = '';
+        try {
+            // 스크롤 명령 처리
+            if (command.includes('스크롤') || command.includes('내려')) {
+                setLoadingType('스크롤 중');
 
-            if (command.includes('검색')) {
-                query = command.split('검색')[0].trim();
-            } else if (command.includes('찾아')) {
-                query = command.split('찾아')[0].trim();
+                if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+                    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                    const activeTab = tabs[0];
+
+                    if (activeTab?.id) {
+                        await chrome.tabs.sendMessage(activeTab.id, {
+                            type: 'SCROLL_PAGE',
+                            direction: command.includes('위') ? 'up' : 'down'
+                        });
+                    } else {
+                        throw new Error('활성 탭을 찾을 수 없습니다.');
+                    }
+                } else {
+                    throw new Error('Chrome 확장 프로그램 API를 사용할 수 없습니다.');
+                }
+                return;
             }
 
-            if (query) {
-                setSearchQuery(query);
-                setLoadingType('search');
-                setShowLoadingAnimation(true);
-                setTimeout(() => {
-                    setIsLoading(true);
-                }, 300);
-
-                setTimeout(() => {
-                    const searchUrl = `https://www.youtube.com/search?q=${encodeURIComponent(query)}`;
-                    window.open(searchUrl, '_blank');
-                    setIsLoading(false);
-                    setShowLoadingAnimation(false);
-                }, 3000);
+            if (command.includes('검색') || command.startsWith('찾아줘')) {
+                setLoadingType('검색중');
+            } else if (command.includes('접속') || command.includes('열어줘')) {
+                setLoadingType('접속중');
             }
+
+            const response = await fetch('https://chromate.sunrin.kr/api/v1/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: command
+                })
+            });
+
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+
+            if (responseData.action === 'open' && responseData.parameters) {
+                window.open(responseData.parameters, '_blank');
+            } else if (responseData.action === 'search' && responseData.parameters) {
+                window.open(`https://www.google.com/search?q=${encodeURIComponent(responseData.parameters)}`, '_blank');
+            }
+
+        } catch (error) {
+            console.error('명령 처리 중 오류 발생:', error);
+            setError(`오류: ${error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}`);
+        } finally {
+            setIsLoading(false);
+            setShowLoadingAnimation(false);
+            setLoadingType('');
         }
     };
 
@@ -127,23 +149,13 @@ const VoiceControl = () => {
     const renderButton = () => {
         if (isLoading) {
             return (
-                <div className={`flex flex-col items-center justify-center h-[119px] mt-16 space-y-2
-                    animate-fade-in-up`}>
-                    <p className="text-2xl font-bold animate-slide-up">
-                        {loadingType === 'connect' ?
-                            'https://www.google.com' :
-                            searchQuery
-                        }
+                <div className="flex flex-col items-center justify-center mt-16 space-y-8">
+                    <p className="text-[42px] font-bold text-[#838383]">
+                        {loadingType}
+                        <span className="animate-bounce-dots">.</span>
+                        <span className="animate-bounce-dots animation-delay-100">.</span>
+                        <span className="animate-bounce-dots animation-delay-200">.</span>
                     </p>
-                    <div className="relative">
-                        <p className="font-wanted-sans text-[42px] font-bold text-[#838383] animate-pulse">
-                            {loadingType === 'connect' ? '접속 중' : '검색 중'}
-                            <span className="animate-bounce-dots">.</span>
-                            <span className="animate-bounce-dots animation-delay-100">.</span>
-                            <span className="animate-bounce-dots animation-delay-200">.</span>
-                        </p>
-                        <div className="absolute -inset-4 bg-gradient-to-r from-transparent via-[#3AFC95]/10 to-transparent animate-loading-gradient"></div>
-                    </div>
                 </div>
             );
         }
@@ -182,11 +194,11 @@ const VoiceControl = () => {
                     )}
 
                     <div className="relative flex w-[462px] px-[35px] py-8 rounded-[24px] bg-white/10"
-                         style={{marginTop: '15rem'}}>
+                         style={{marginTop: '8rem'}}>
                         <img src={mic} alt="mic"
                              className="w-6 h-6 absolute left-4 top-1/2 transform -translate-y-1/2"/>
                         <p className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white font-bold text-[20px] font-wanted-sans">
-                            {transcript || '명령어를 말하세요'}
+                            {transcript || '명령을 말씀해주세요'}
                         </p>
                     </div>
                 </div>

@@ -13,13 +13,13 @@
     "default_height": 680
   },
   "background": {
-    "service_worker": "background.ts",
+    "service_worker": "background.js",
     "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.ts"]
+      "js": ["content.js"]
     }
   ]
 }
