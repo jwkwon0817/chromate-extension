@@ -8,6 +8,12 @@ declare global {
     }
 }
 
+interface Command {
+    type: string;
+    keywords: string[];
+    action: string;
+}
+
 const VoiceControl = () => {
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
@@ -16,11 +22,58 @@ const VoiceControl = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
     const [loadingType, setLoadingType] = useState<string>('');
+    const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
+    const [commands, setCommands] = useState<Command[]>([]);
+
+    // 서버에서 명령어 목록을 가져오는 함수
+    const fetchCommands = async () => {
+        try {
+            const response = await fetch('https://chromate.sunrin.kr/api/v1/commands');
+            if (!response.ok) {
+                throw new Error('명령어 목록을 가져오는데 실패했습니다.');
+            }
+            const data = await response.json();
+            setCommands(data);
+        } catch (error) {
+            console.error('명령어 로딩 실패:', error);
+        }
+    };
+
+    // 마이크 권한 요청
+    const requestMicrophonePermission = async () => {
+        try {
+            if (typeof chrome !== 'undefined' && chrome.permissions) {
+                const result = await chrome.permissions.request({
+                    permissions: ['microphone']
+                });
+
+                if (result) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    setHasMicPermission(true);
+                    return true;
+                } else {
+                    setError('마이크 권한이 거부되었습니다.');
+                    setHasMicPermission(false);
+                    return false;
+                }
+            } else {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                setHasMicPermission(true);
+                return true;
+            }
+        } catch (error) {
+            console.error('마이크 권한 요청 실패:', error);
+            setError('마이크 접근 권한을 얻을 수 없습니다.');
+            setHasMicPermission(false);
+            return false;
+        }
+    };
 
     const handleScroll = (direction: 'up' | 'down') => {
         const scrollAmount = direction === 'up' ? -800 : 800;
 
-        // 먼저 크롬 확장프로그램에서 시도
         if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
             chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                 const activeTab = tabs[0];
@@ -31,7 +84,6 @@ const VoiceControl = () => {
                             direction
                         });
                     } catch (error) {
-                        // 확장프로그램 메시지 실패 시 일반 웹사이트 스크롤 시도
                         window.scrollBy({
                             top: scrollAmount,
                             behavior: 'smooth'
@@ -40,7 +92,6 @@ const VoiceControl = () => {
                 }
             });
         } else {
-            // 크롬 확장프로그램 API를 사용할 수 없는 경우 일반 웹사이트 스크롤
             window.scrollBy({
                 top: scrollAmount,
                 behavior: 'smooth'
@@ -48,6 +99,7 @@ const VoiceControl = () => {
         }
     };
 
+    // 음성 명령 처리 함수
     const handleCommand = async (text: string) => {
         const command = text.toLowerCase().trim();
 
@@ -55,24 +107,7 @@ const VoiceControl = () => {
         setIsLoading(true);
 
         try {
-            // 스크롤 명령 처리
-            if (command.includes('스크롤') || command.includes('내려') || command.includes('올려')) {
-                setLoadingType('스크롤 중');
-                // "위로", "위", "올려" 등의 명령어 처리
-                const direction = command.includes('위') || command.includes('올려') ? 'up' : 'down';
-                handleScroll(direction);
-                setIsLoading(false);
-                setShowLoadingAnimation(false);
-                setLoadingType('');
-                return;
-            }
-
-            if (command.includes('검색') || command.startsWith('찾아줘')) {
-                setLoadingType('검색중');
-            } else if (command.includes('접속') || command.includes('열어줘')) {
-                setLoadingType('접속중');
-            }
-
+            // 서버에 음성 명령 전송
             const response = await fetch('https://chromate.sunrin.kr/api/v1/chat', {
                 method: 'POST',
                 headers: {
@@ -80,28 +115,33 @@ const VoiceControl = () => {
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    message: command
+                    message: command,
+                    commands: commands // 현재 사용 가능한 명령어 목록도 함께 전송
                 })
             });
-
-            const responseData = await response.json();
 
             if (!response.ok) {
                 throw new Error(`API Error: ${response.status}`);
             }
 
+            const responseData = await response.json();
             const wasListening = isListening;
 
-            if (responseData.action === 'open' && responseData.parameters) {
+            // 서버 응답에 따른 액션 실행
+            if (responseData.action === 'scroll') {
+                setLoadingType('스크롤 중');
+                handleScroll(responseData.parameters.direction);
+            } else if (responseData.action === 'open') {
+                setLoadingType('접속중');
                 window.open(responseData.parameters, '_blank');
-                if (wasListening && recognition) {
-                    recognition.start();
-                }
-            } else if (responseData.action === 'search' && responseData.parameters) {
+            } else if (responseData.action === 'search') {
+                setLoadingType('검색중');
                 window.open(`https://www.google.com/search?q=${encodeURIComponent(responseData.parameters)}`, '_blank');
-                if (wasListening && recognition) {
-                    recognition.start();
-                }
+            }
+
+            // 음성 인식 재시작
+            if (wasListening && recognition) {
+                recognition.start();
             }
 
         } catch (error) {
@@ -114,7 +154,6 @@ const VoiceControl = () => {
         }
     };
 
-    // 나머지 코드는 동일...
     const initializeRecognition = () => {
         if ('webkitSpeechRecognition' in window) {
             const recog = new window.webkitSpeechRecognition();
@@ -154,7 +193,51 @@ const VoiceControl = () => {
         }
     };
 
+    const handleToggleListening = async () => {
+        if (isListening) {
+            if (recognition) {
+                recognition.stop();
+                setIsListening(false);
+            }
+        } else {
+            if (!hasMicPermission) {
+                const permitted = await requestMicrophonePermission();
+                if (!permitted) return;
+            }
+
+            if (recognition) {
+                try {
+                    await recognition.start();
+                } catch (error) {
+                    console.error('음성 인식 시작 실패:', error);
+                    setError('음성 인식을 시작할 수 없습니다. 페이지를 새로고침해주세요.');
+                }
+            }
+        }
+    };
+
     useEffect(() => {
+        // 명령어 목록 로드
+        fetchCommands();
+
+        // 권한 상태 확인
+        if (typeof chrome !== 'undefined' && chrome.permissions) {
+            chrome.permissions.contains({
+                permissions: ['microphone']
+            }, (result) => {
+                setHasMicPermission(result);
+            });
+        } else {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    stream.getTracks().forEach(track => track.stop());
+                    setHasMicPermission(true);
+                })
+                .catch(() => {
+                    setHasMicPermission(false);
+                });
+        }
+
         initializeRecognition();
 
         return () => {
@@ -164,19 +247,6 @@ const VoiceControl = () => {
             }
         };
     }, []);
-
-    const handleToggleListening = () => {
-        if (isListening) {
-            if (recognition) {
-                recognition.stop();
-                setIsListening(false);
-            }
-        } else {
-            if (recognition) {
-                recognition.start();
-            }
-        }
-    };
 
     const renderButton = () => {
         if (isLoading) {
