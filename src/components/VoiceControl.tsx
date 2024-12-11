@@ -25,20 +25,6 @@ const VoiceControl = () => {
     const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
     const [commands, setCommands] = useState<Command[]>([]);
 
-    // 서버에서 명령어 목록을 가져오는 함수
-    const fetchCommands = async () => {
-        try {
-            const response = await fetch('https://chromate.sunrin.kr/api/v1/commands');
-            if (!response.ok) {
-                throw new Error('명령어 목록을 가져오는데 실패했습니다.');
-            }
-            const data = await response.json();
-            setCommands(data);
-        } catch (error) {
-            console.error('명령어 로딩 실패:', error);
-        }
-    };
-
     // 마이크 권한 요청
     const requestMicrophonePermission = async () => {
         try {
@@ -218,7 +204,6 @@ const VoiceControl = () => {
 
     useEffect(() => {
         // 명령어 목록 로드
-        fetchCommands();
 
         // 권한 상태 확인
         if (typeof chrome !== 'undefined' && chrome.permissions) {
