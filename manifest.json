@@ -5,7 +5,8 @@
   "description": "음성 제어를 통한 웹 브라우저 제어 확장 프로그램",
   "permissions": [
     "tabs",
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "action": {
     "default_popup": "index.html",

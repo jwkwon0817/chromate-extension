@@ -17,6 +17,37 @@ const VoiceControl = () => {
     const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
     const [loadingType, setLoadingType] = useState<string>('');
 
+    const handleScroll = (direction: 'up' | 'down') => {
+        const scrollAmount = direction === 'up' ? -800 : 800;
+
+        // 먼저 크롬 확장프로그램에서 시도
+        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+            chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+                const activeTab = tabs[0];
+                if (activeTab?.id) {
+                    try {
+                        await chrome.tabs.sendMessage(activeTab.id, {
+                            type: 'SCROLL_PAGE',
+                            direction
+                        });
+                    } catch (error) {
+                        // 확장프로그램 메시지 실패 시 일반 웹사이트 스크롤 시도
+                        window.scrollBy({
+                            top: scrollAmount,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
+            });
+        } else {
+            // 크롬 확장프로그램 API를 사용할 수 없는 경우 일반 웹사이트 스크롤
+            window.scrollBy({
+                top: scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    };
+
     const handleCommand = async (text: string) => {
         const command = text.toLowerCase().trim();
 
@@ -25,24 +56,14 @@ const VoiceControl = () => {
 
         try {
             // 스크롤 명령 처리
-            if (command.includes('스크롤') || command.includes('내려')) {
+            if (command.includes('스크롤') || command.includes('내려') || command.includes('올려')) {
                 setLoadingType('스크롤 중');
-
-                if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
-                    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-                    const activeTab = tabs[0];
-
-                    if (activeTab?.id) {
-                        await chrome.tabs.sendMessage(activeTab.id, {
-                            type: 'SCROLL_PAGE',
-                            direction: command.includes('위') ? 'up' : 'down'
-                        });
-                    } else {
-                        throw new Error('활성 탭을 찾을 수 없습니다.');
-                    }
-                } else {
-                    throw new Error('Chrome 확장 프로그램 API를 사용할 수 없습니다.');
-                }
+                // "위로", "위", "올려" 등의 명령어 처리
+                const direction = command.includes('위') || command.includes('올려') ? 'up' : 'down';
+                handleScroll(direction);
+                setIsLoading(false);
+                setShowLoadingAnimation(false);
+                setLoadingType('');
                 return;
             }
 
@@ -69,10 +90,18 @@ const VoiceControl = () => {
                 throw new Error(`API Error: ${response.status}`);
             }
 
+            const wasListening = isListening;
+
             if (responseData.action === 'open' && responseData.parameters) {
                 window.open(responseData.parameters, '_blank');
+                if (wasListening && recognition) {
+                    recognition.start();
+                }
             } else if (responseData.action === 'search' && responseData.parameters) {
                 window.open(`https://www.google.com/search?q=${encodeURIComponent(responseData.parameters)}`, '_blank');
+                if (wasListening && recognition) {
+                    recognition.start();
+                }
             }
 
         } catch (error) {
@@ -85,6 +114,7 @@ const VoiceControl = () => {
         }
     };
 
+    // 나머지 코드는 동일...
     const initializeRecognition = () => {
         if ('webkitSpeechRecognition' in window) {
             const recog = new window.webkitSpeechRecognition();
@@ -113,7 +143,9 @@ const VoiceControl = () => {
             };
 
             recog.onend = () => {
-                setIsListening(false);
+                if (isListening) {
+                    recog.start();
+                }
             };
 
             setRecognition(recog);
