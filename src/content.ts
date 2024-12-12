@@ -1,5 +1,3 @@
-// content.ts
-
 interface VoiceCommand {
     message: string;
     action: string;
@@ -18,7 +16,6 @@ class ContentVoiceRecognition {
     private async requestMicPermission() {
         try {
             this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            // 스트림을 유지하여 마이크 권한 계속 사용
         } catch (error) {
             console.error('마이크 권한 획득 실패:', error);
         }
@@ -27,7 +24,7 @@ class ContentVoiceRecognition {
     private initializeRecognition() {
         if ('webkitSpeechRecognition' in window) {
             this.recognition = new window.webkitSpeechRecognition();
-            this.recognition.continuous = true;
+            this.recognition.continuous = false;
             this.recognition.interimResults = true;
             this.recognition.lang = 'ko-KR';
 
@@ -39,33 +36,32 @@ class ContentVoiceRecognition {
                 const current = event.resultIndex;
                 const transcript = event.results[current][0].transcript;
 
-                console.log(transcript);
-                console.log(event.results[current])
+                console.log('음성 인식된 내용:', transcript);
 
                 if (event.results[current].isFinal) {
-                    console.log('Final', transcript)
+                    console.log('최종 인식된 내용:', transcript);
                     await this.processCommand(transcript);
                 }
             };
 
             this.recognition.onerror = (event: any) => {
                 console.error('음성 인식 오류:', event.error);
-                // 오류 발생 시 재시작
                 this.restartRecognition();
             };
 
             this.recognition.onend = () => {
-                // 음성 인식이 끝나면 자동으로 재시작
+                console.log('음성 인식 종료 - 재시작 시도');
                 this.restartRecognition();
             };
 
-            // 초기 시작
             this.recognition.start();
         }
     }
 
     private async processCommand(command: string) {
         try {
+            console.log('서버로 전송하는 명령어:', command);
+
             const response = await fetch('https://chromate.sunrin.kr/api/v1/chat', {
                 method: 'POST',
                 headers: {
@@ -82,6 +78,17 @@ class ContentVoiceRecognition {
             }
 
             const result = await response.json();
+            console.log('서버 응답:', result);
+
+            // parameters가 문자열로 왔을 경우 파싱
+            if (typeof result.parameters === 'string') {
+                try {
+                    result.parameters = JSON.parse(result.parameters);
+                } catch (e) {
+                    // 파싱할 수 없는 경우 그대로 사용
+                }
+            }
+
             this.executeAction(result);
 
         } catch (error) {
@@ -90,26 +97,47 @@ class ContentVoiceRecognition {
     }
 
     private executeAction(result: VoiceCommand) {
+        console.log('실행할 액션:', result.action);
+        console.log('액션 파라미터:', result.parameters);
+
         switch (result.action) {
             case 'scroll':
-                this.handleScroll(result.parameters.direction);
+                const direction = typeof result.parameters === 'string' ? result.parameters : result.parameters?.direction;
+                this.handleScroll(direction || 'down');
                 break;
             case 'open':
-                window.open(result.parameters, '_blank');
+                const url = typeof result.parameters === 'string' ? result.parameters : result.parameters?.url;
+                window.open(url, '_blank');
                 break;
             case 'search':
-                window.open(`https://www.google.com/search?q=${encodeURIComponent(result.parameters)}`, '_blank');
+                const searchQuery = typeof result.parameters === 'string'
+                    ? result.parameters
+                    : (typeof result.parameters === 'object' && result.parameters !== null)
+                        ? result.parameters.query || Object.values(result.parameters).join(' ')
+                        : '';
+                console.log('검색어:', searchQuery);
+                window.location.href = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
                 break;
-            // 필요한 다른 액션들 추가
         }
     }
 
-    private handleScroll(direction: 'up' | 'down') {
+    private handleScroll(direction: string) {
+        console.log('스크롤 방향:', direction);
         const scrollAmount = window.innerHeight * 0.8;
-        window.scrollBy({
-            top: direction === 'up' ? -scrollAmount : scrollAmount,
-            behavior: 'smooth'
-        });
+
+        const normalizedDirection = direction.toLowerCase().trim();
+
+        if (normalizedDirection === 'up') {
+            window.scrollBy({
+                top: -scrollAmount,
+                behavior: 'smooth'
+            });
+        } else {
+            window.scrollBy({
+                top: scrollAmount,
+                behavior: 'smooth'
+            });
+        }
     }
 
     private restartRecognition() {
@@ -117,11 +145,9 @@ class ContentVoiceRecognition {
             this.recognition.start();
         } catch (error) {
             console.error('음성 인식 재시작 실패:', error);
-            // 잠시 후 다시 시도
             setTimeout(() => this.restartRecognition(), 1000);
         }
     }
 }
 
-// content script가 로드되면 자동으로 실행
 new ContentVoiceRecognition();
