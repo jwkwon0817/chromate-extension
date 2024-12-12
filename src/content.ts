@@ -78,7 +78,10 @@ class ContentVoiceRecognition {
             }
 
             const result = await response.json();
-            console.log('서버 응답:', result);
+            console.log('서버 응답 전체:', result);
+            console.log('액션 타입:', result.action);
+            console.log('파라미터 타입:', typeof result.parameters);
+            console.log('파라미터 값:', result.parameters);
 
             // parameters가 문자열로 왔을 경우 파싱
             if (typeof result.parameters === 'string') {
@@ -86,6 +89,7 @@ class ContentVoiceRecognition {
                     result.parameters = JSON.parse(result.parameters);
                 } catch (e) {
                     // 파싱할 수 없는 경우 그대로 사용
+                    console.log('파라미터 파싱 실패:', e);
                 }
             }
 
@@ -107,7 +111,7 @@ class ContentVoiceRecognition {
                 break;
             case 'open':
                 const url = typeof result.parameters === 'string' ? result.parameters : result.parameters?.url;
-                window.open(url, '_blank');
+                window.location.href = url;
                 break;
             case 'search':
                 const searchQuery = typeof result.parameters === 'string'
@@ -118,6 +122,26 @@ class ContentVoiceRecognition {
                 console.log('검색어:', searchQuery);
                 window.location.href = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
                 break;
+            case 'backward':
+                console.log('뒤로 가기 실행');
+                try {
+                    window.history.back();
+                } catch (error) {
+                    console.error('뒤로 가기 실행 중 오류:', error);
+                }
+                break;
+            case 'forward':
+                console.log('앞으로 가기 실행');
+                try {
+                    window.history.forward();
+                } catch (error) {
+                    console.error('앞으로 가기 실행 중 오류:', error);
+                }
+                break;
+            case 'refresh':
+                window.location.reload();
+            default:
+                console.log('알 수 없는 액션:', result.action);
         }
     }
 

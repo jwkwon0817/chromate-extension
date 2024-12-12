@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case 'NAVIGATE_FORWARD':
             chrome.tabs.goForward();  // 앞으로 가기
             break;
-        case 'NAVIGATE_BACK':
+        case 'NAVIGATE_BACKWARD':
             chrome.tabs.goBack();     // 뒤로 가기
             break;
         case 'NAVIGATE_TO_URL':

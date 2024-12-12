@@ -1,17 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Voice Control Extension",
+  "name": "Chromate",
   "version": "1.0.0",
   "description": "음성 제어를 통한 웹 브라우저 제어 확장 프로그램",
-  "permissions": [
-    "tabs",
-    "activeTab",
-    "storage"
-  ],
   "action": {
     "default_popup": "index.html",
     "default_width": 500,
     "default_height": 680
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "64": "icons/icon64.png",
+    "128": "icons/icon128.png"
   },
   "background": {
     "service_worker": "background.js",
