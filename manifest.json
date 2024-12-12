@@ -8,7 +8,6 @@
     "default_width": 500,
     "default_height": 680
   },
-  "permissions": ["activeTab"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
