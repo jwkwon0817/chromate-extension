@@ -25,30 +25,12 @@ const VoiceControl = () => {
     const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
     const [commands, setCommands] = useState<Command[]>([]);
 
-    // 마이크 권한 요청
     const requestMicrophonePermission = async () => {
         try {
-            if (typeof chrome !== 'undefined' && chrome.permissions) {
-                const result = await chrome.permissions.request({
-                    permissions: ['microphone']
-                });
-
-                if (result) {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    stream.getTracks().forEach(track => track.stop());
-                    setHasMicPermission(true);
-                    return true;
-                } else {
-                    setError('마이크 권한이 거부되었습니다.');
-                    setHasMicPermission(false);
-                    return false;
-                }
-            } else {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                stream.getTracks().forEach(track => track.stop());
-                setHasMicPermission(true);
-                return true;
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop());
+            setHasMicPermission(true);
+            return true;
         } catch (error) {
             console.error('마이크 권한 요청 실패:', error);
             setError('마이크 접근 권한을 얻을 수 없습니다.');
@@ -58,74 +40,119 @@ const VoiceControl = () => {
     };
 
     const handleScroll = (direction: 'up' | 'down') => {
+        console.log('스크롤 함수 실행:', direction);
         const scrollAmount = direction === 'up' ? -800 : 800;
 
         if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+            console.log('크롬 확장프로그램 환경 감지');
             chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                 const activeTab = tabs[0];
                 if (activeTab?.id) {
                     try {
+                        console.log('탭에 메시지 전송 시도');
                         await chrome.tabs.sendMessage(activeTab.id, {
                             type: 'SCROLL_PAGE',
                             direction
                         });
+                        console.log('스크롤 메시지 전송 성공');
                     } catch (error) {
-                        window.scrollBy({
-                            top: scrollAmount,
-                            behavior: 'smooth'
-                        });
+                        console.error('스크롤 메시지 전송 실패:', error);
+                        try {
+                            if (window.opener) {
+                                window.opener.scrollBy({
+                                    top: scrollAmount,
+                                    behavior: 'smooth'
+                                });
+                            } else if (window.parent && window.parent !== window) {
+                                window.parent.scrollBy({
+                                    top: scrollAmount,
+                                    behavior: 'smooth'
+                                });
+                            }
+                        } catch (scrollError) {
+                            console.error('대체 스크롤 실행 실패:', scrollError);
+                        }
                     }
                 }
             });
         } else {
-            window.scrollBy({
-                top: scrollAmount,
-                behavior: 'smooth'
-            });
+            console.log('일반 웹사이트 환경 감지');
+            try {
+                if (window.opener) {
+                    window.opener.scrollBy({
+                        top: scrollAmount,
+                        behavior: 'smooth'
+                    });
+                } else if (window.parent && window.parent !== window) {
+                    window.parent.scrollBy({
+                        top: scrollAmount,
+                        behavior: 'smooth'
+                    });
+                } else {
+                    const script = `window.scrollBy({
+                        top: ${scrollAmount},
+                        behavior: 'smooth'
+                    });`;
+
+                    document.documentElement.setAttribute('onreset', script);
+                    document.documentElement.dispatchEvent(new CustomEvent('reset'));
+                    document.documentElement.removeAttribute('onreset');
+                }
+                console.log('스크롤 실행 성공');
+            } catch (error) {
+                console.error('스크롤 실행 실패:', error);
+            }
         }
     };
 
-    // 음성 명령 처리 함수
     const handleCommand = async (text: string) => {
         const command = text.toLowerCase().trim();
+        console.log('음성 명령어:', command);
 
         setShowLoadingAnimation(true);
         setIsLoading(true);
 
         try {
-            // 서버에 음성 명령 전송
+            const requestData = {
+                message: command,
+                commands: commands
+            };
+            console.log('서버로 전송하는 데이터:', requestData);
+
             const response = await fetch('https://chromate.sunrin.kr/api/v1/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    message: command,
-                    commands: commands // 현재 사용 가능한 명령어 목록도 함께 전송
-                })
+                body: JSON.stringify(requestData)
             });
+
+            console.log('서버 응답 상태:', response.status);
 
             if (!response.ok) {
                 throw new Error(`API Error: ${response.status}`);
             }
 
             const responseData = await response.json();
+            console.log('서버 응답 데이터:', responseData);
+
             const wasListening = isListening;
 
-            // 서버 응답에 따른 액션 실행
             if (responseData.action === 'scroll') {
+                console.log('스크롤 액션 실행:', responseData.parameters);
                 setLoadingType('스크롤 중');
                 handleScroll(responseData.parameters.direction);
             } else if (responseData.action === 'open') {
+                console.log('URL 열기 액션 실행:', responseData.parameters);
                 setLoadingType('접속중');
                 window.open(responseData.parameters, '_blank');
             } else if (responseData.action === 'search') {
+                console.log('검색 액션 실행:', responseData.parameters);
                 setLoadingType('검색중');
                 window.open(`https://www.google.com/search?q=${encodeURIComponent(responseData.parameters)}`, '_blank');
             }
 
-            // 음성 인식 재시작
             if (wasListening && recognition) {
                 recognition.start();
             }
@@ -203,25 +230,15 @@ const VoiceControl = () => {
     };
 
     useEffect(() => {
-        // 명령어 목록 로드
-
-        // 권한 상태 확인
-        if (typeof chrome !== 'undefined' && chrome.permissions) {
-            chrome.permissions.contains({
-                permissions: ['microphone']
-            }, (result) => {
-                setHasMicPermission(result);
+        // 초기 마이크 권한 상태 확인
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                stream.getTracks().forEach(track => track.stop());
+                setHasMicPermission(true);
+            })
+            .catch(() => {
+                setHasMicPermission(false);
             });
-        } else {
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    stream.getTracks().forEach(track => track.stop());
-                    setHasMicPermission(true);
-                })
-                .catch(() => {
-                    setHasMicPermission(false);
-                });
-        }
 
         initializeRecognition();
 
