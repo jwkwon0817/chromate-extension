@@ -122,16 +122,14 @@ class ContentVoiceRecognition {
 
 			const result = await response.json();
 			console.log('서버 응답 전체:', result);
-			console.log('액션 타입:', result.action);
+			console.log('액션 타입:', result.action);s
 			console.log('파라미터 타입:', typeof result.parameters);
 			console.log('파라미터 값:', result.parameters);
 
-			// parameters가 문자열로 왔을 경우 파싱
 			if (typeof result.parameters === 'string') {
 				try {
 					result.parameters = JSON.parse(result.parameters);
 				} catch (e) {
-					// 파싱할 수 없는 경우 그대로 사용
 					console.log('파라미터 파싱 실패:', e);
 				}
 			}
