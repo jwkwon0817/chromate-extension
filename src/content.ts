@@ -122,7 +122,7 @@ class ContentVoiceRecognition {
 
 			const result = await response.json();
 			console.log('서버 응답 전체:', result);
-			console.log('액션 타입:', result.action);s
+			console.log('액션 타입:', result.action);
 			console.log('파라미터 타입:', typeof result.parameters);
 			console.log('파라미터 값:', result.parameters);
 
