@@ -32,14 +32,13 @@ textElement.style.fontWeight = 'bold';
 textElement.style.overflow = 'hidden';
 textElement.style.fontFamily = 'Wanted Sans';
 
-
 textVisualElement.appendChild(micIcon);
 textVisualElement.appendChild(textElement);
 document.body.appendChild(textVisualElement);
 
 class ContentVoiceRecognition {
 	private recognition: any;
-	private stream: MediaStream | null = null;
+	private isRecognitionRunning: boolean = false; // 음성 인식 실행 여부 플래그
 
 	constructor() {
 		this.initializeRecognition();
@@ -48,9 +47,17 @@ class ContentVoiceRecognition {
 
 	private async requestMicPermission() {
 		try {
-			this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+			if (permissionStatus.state === 'denied') {
+				console.warn('마이크 권한이 거부되었습니다. 권한을 허용해주세요.');
+				return;
+			}
+			if (permissionStatus.state === 'granted' || permissionStatus.state === 'prompt') {
+				await navigator.mediaDevices.getUserMedia({ audio: true });
+				console.log('마이크 권한 획득 성공');
+			}
 		} catch (error) {
-			console.error('마이크 권한 획득 실패:', error);
+			console.error('마이크 권한 요청 중 오류 발생:', error);
 		}
 	}
 
@@ -63,6 +70,19 @@ class ContentVoiceRecognition {
 
 			this.recognition.onstart = () => {
 				console.log('음성 인식 시작');
+				this.isRecognitionRunning = true; // 실행 상태 업데이트
+			};
+
+			this.recognition.onend = () => {
+				console.log('음성 인식 종료');
+				this.isRecognitionRunning = false; // 실행 상태 업데이트
+				this.restartRecognition();
+			};
+
+			this.recognition.onerror = (event: any) => {
+				console.error('음성 인식 오류:', event.error);
+				this.isRecognitionRunning = false; // 실행 상태 업데이트
+				this.restartRecognition();
 			};
 
 			this.recognition.onresult = async (event: any) => {
@@ -87,18 +107,24 @@ class ContentVoiceRecognition {
 				}
 			};
 
-			this.recognition.onerror = (event: any) => {
-				console.error('음성 인식 오류:', event.error);
-				this.restartRecognition();
-			};
-
-			this.recognition.onend = () => {
-				console.log('음성 인식 종료 - 재시작 시도');
-				this.restartRecognition();
-			};
-
-			this.recognition.start();
+			this.startRecognition();
 		}
+	}
+
+	private startRecognition() {
+		if (!this.isRecognitionRunning) {
+			try {
+				this.recognition.start();
+			} catch (error) {
+				console.error('음성 인식 시작 실패:', error);
+			}
+		}
+	}
+
+	private restartRecognition() {
+		setTimeout(() => {
+			this.startRecognition();
+		}, 1000); // 1초 후 재시작 시도
 	}
 
 	private async processCommand(command: string) {
@@ -109,7 +135,7 @@ class ContentVoiceRecognition {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Accept': 'application/json',
+					Accept: 'application/json',
 				},
 				body: JSON.stringify({
 					message: command,
@@ -117,25 +143,12 @@ class ContentVoiceRecognition {
 			});
 
 			if (!response.ok) {
-				throw new Error(`서버 오류: ${ response.status }`);
+				throw new Error(`서버 오류: ${response.status}`);
 			}
 
 			const result = await response.json();
 			console.log('서버 응답 전체:', result);
-			console.log('액션 타입:', result.action);
-			console.log('파라미터 타입:', typeof result.parameters);
-			console.log('파라미터 값:', result.parameters);
-
-			if (typeof result.parameters === 'string') {
-				try {
-					result.parameters = JSON.parse(result.parameters);
-				} catch (e) {
-					console.log('파라미터 파싱 실패:', e);
-				}
-			}
-
 			this.executeAction(result);
-
 		} catch (error) {
 			console.error('명령 처리 중 오류:', error);
 		}
@@ -146,45 +159,27 @@ class ContentVoiceRecognition {
 		console.log('액션 파라미터:', result.parameters);
 
 		switch (result.action) {
-			case 'scroll': {
-				const direction = typeof result.parameters === 'string' ? result.parameters : result.parameters?.direction;
-				this.handleScroll(direction || 'down');
+			case 'scroll':
+				this.handleScroll(result.parameters?.direction || 'down');
 				break;
-			}
-			case 'open': {
-				window.location.href = typeof result.parameters === 'string' ? result.parameters : result.parameters?.url;
+			case 'open':
+				window.location.href = result.parameters?.url || '';
 				break;
-			}
-			case 'search': {
-				const searchQuery = typeof result.parameters === 'string'
-					? result.parameters
-					: (typeof result.parameters === 'object' && result.parameters !== null)
-						? result.parameters.query || Object.values(result.parameters).join(' ')
-						: '';
-				console.log('검색어:', searchQuery);
-				window.location.href = `https://www.google.com/search?q=${ encodeURIComponent(searchQuery) }`;
+			case 'search':
+				const query = result.parameters?.query || '';
+				window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 				break;
-			}
 			case 'backward':
-				console.log('뒤로 가기 실행');
-				try {
-					window.history.back();
-				} catch (error) {
-					console.error('뒤로 가기 실행 중 오류:', error);
-				}
+				window.history.back();
 				break;
 			case 'forward':
-				console.log('앞으로 가기 실행');
-				try {
-					window.history.forward();
-				} catch (error) {
-					console.error('앞으로 가기 실행 중 오류:', error);
-				}
+				window.history.forward();
 				break;
 			case 'refresh':
 				window.location.reload();
+				break;
 			default:
-				console.log('알 수 없는 액션:', result.action);
+				console.warn('알 수 없는 액션:', result.action);
 		}
 	}
 
@@ -192,27 +187,10 @@ class ContentVoiceRecognition {
 		console.log('스크롤 방향:', direction);
 		const scrollAmount = window.innerHeight * 0.8;
 
-		const normalizedDirection = direction.toLowerCase().trim();
-
-		if (normalizedDirection === 'up') {
-			window.scrollBy({
-				top: -scrollAmount,
-				behavior: 'smooth',
-			});
+		if (direction === 'up') {
+			window.scrollBy({ top: -scrollAmount, behavior: 'smooth' });
 		} else {
-			window.scrollBy({
-				top: scrollAmount,
-				behavior: 'smooth',
-			});
-		}
-	}
-
-	private restartRecognition() {
-		try {
-			this.recognition.start();
-		} catch (error) {
-			console.error('음성 인식 재시작 실패:', error);
-			setTimeout(() => this.restartRecognition(), 1000);
+			window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
 		}
 	}
 }
