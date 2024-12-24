@@ -1,3 +1,5 @@
+import {before} from "node:test";
+
 interface VoiceCommand {
 	message: string;
 	action: string;
@@ -159,21 +161,40 @@ class ContentVoiceRecognition {
 		console.log('액션 파라미터:', result.parameters);
 
 		switch (result.action) {
-			case 'scroll':
-				this.handleScroll(result.parameters?.direction || 'down');
+			case 'scroll': {
+				const direction = typeof result.parameters === 'string' ? result.parameters : result.parameters?.direction;
+				this.handleScroll(direction || 'down');
 				break;
-			case 'open':
-				window.location.href = result.parameters?.url || '';
+			}
+			case 'open': {
+				window.location.href = typeof result.parameters === 'string' ? result.parameters : result.parameters?.url;
 				break;
-			case 'search':
-				const query = result.parameters?.query || '';
-				window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+			}
+			case 'search': {
+				const searchQuery = typeof result.parameters === 'string'
+					? result.parameters
+					: (typeof result.parameters === 'object' && result.parameters !== null)
+						? result.parameters.query || Object.values(result.parameters).join(' ')
+						: '';
+				console.log('검색어:', searchQuery);
+				window.location.href = `https://www.google.com/search?q=${ encodeURIComponent(searchQuery) }`;
 				break;
+			}
 			case 'backward':
-				window.history.back();
+				console.log('뒤로 가기 실행');
+				try {
+					window.history.back();
+				} catch (error) {
+					console.error('뒤로 가기 실행 중 오류:', error);
+				}
 				break;
 			case 'forward':
-				window.history.forward();
+				console.log('앞으로 가기 실행');
+				try {
+					window.history.forward();
+				} catch (error) {
+					console.error('앞으로 가기 실행 중 오류:', error);
+				}
 				break;
 			case 'refresh':
 				window.location.reload();
@@ -183,7 +204,7 @@ class ContentVoiceRecognition {
 				break;
 			}
 			default:
-				console.warn('알 수 없는 액션:', result.action);
+				console.log('알 수 없는 액션:', result.action);
 		}
 	}
 
@@ -191,10 +212,18 @@ class ContentVoiceRecognition {
 		console.log('스크롤 방향:', direction);
 		const scrollAmount = window.innerHeight * 0.8;
 
-		if (direction === 'up') {
-			window.scrollBy({ top: -scrollAmount, behavior: 'smooth' });
+		const normalizedDirection = direction.toLowerCase().trim();
+
+		if (normalizedDirection === 'up') {
+			window.scrollBy({
+				top: -scrollAmount,
+				behavior: 'smooth',
+			});
 		} else {
-			window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+			window.scrollBy({
+				top: scrollAmount,
+				behavior: 'smooth',
+			});
 		}
 	}
 }
