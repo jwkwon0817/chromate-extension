@@ -149,6 +149,9 @@ const VoiceControl = () => {
 			} else if (responseData.action === 'search') {
 				console.log('검색 액션 실행:', responseData.parameters);
 				window.open(`https://www.google.com/search?q=${ encodeURIComponent(responseData.parameters) }`, '_blank');
+			} else if (responseData.action === 'close') {
+				console.log('창 닫기 액션 실행');
+				window.close();
 			}
 
 			if (wasListening && recognition) {

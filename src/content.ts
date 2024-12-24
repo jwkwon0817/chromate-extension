@@ -185,6 +185,11 @@ class ContentVoiceRecognition {
 				break;
 			case 'refresh':
 				window.location.reload();
+				break;
+			case 'close': {
+				window.close();
+				break;
+			}
 			default:
 				console.log('알 수 없는 액션:', result.action);
 		}

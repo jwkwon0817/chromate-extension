@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Chromate",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "음성 제어를 통한 웹 브라우저 제어 확장 프로그램",
 	"action": {
 		"default_popup": "index.html",
