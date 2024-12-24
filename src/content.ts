@@ -178,6 +178,13 @@ class ContentVoiceRecognition {
 			case 'refresh':
 				window.location.reload();
 				break;
+<<<<<<< HEAD
+=======
+			case 'close': {
+				window.close();
+				break;
+			}
+>>>>>>> e83d50e33da3ee9a745e6071a162556f1a321278
 			default:
 				console.warn('알 수 없는 액션:', result.action);
 		}
