@@ -43,6 +43,8 @@ class ContentVoiceRecognition {
 	private readonly KEYWORD = '시리야';
 	private backgroundRecognition: any;
 	private lastHoveredElement: Element | null = null;
+	private originalTexts: Map<Element, string> = new Map();
+	private isTranslated: boolean = false;
 
 	constructor() {
 		this.initializeRecognition();
@@ -219,6 +221,10 @@ class ContentVoiceRecognition {
 		console.log('액션 파라미터:', result.parameters);
 
 		switch (result.action) {
+			case 'translate': {
+				this.handleTranslate();
+				break;
+			}
 			case 'zoom': {
 				const direction = typeof result.parameters === 'string' ? result.parameters : result.parameters?.direction;
 				this.handleZoom(direction || 'in');
@@ -309,6 +315,50 @@ class ContentVoiceRecognition {
 				behavior: 'smooth',
 			});
 		}
+	}
+
+	private async handleTranslate() {
+		try {
+			if (this.isTranslated) {
+				this.restoreOriginalTexts();
+				this.isTranslated = false;
+				console.log('원본 텍스트로 복원됨');
+				return;
+			}
+
+			const elements = document.querySelectorAll('h1, h2, h3, p, span, a, button');
+
+			for (const element of elements) {
+				const originalText = element.textContent || '';
+				if (!originalText.trim()) continue;
+
+				this.originalTexts.set(element, originalText);
+
+				try {
+					const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ko&dt=t&q=${encodeURIComponent(originalText)}`);
+					const data = await response.json();
+
+					if (data && data[0] && data[0][0]) {
+						element.textContent = data[0][0][0];
+					}
+				} catch (error) {
+					console.error('텍스트 번역 실패:', error);
+				}
+			}
+
+			this.isTranslated = true;
+			console.log('페이지 번역 완료');
+
+		} catch (error) {
+			console.error('번역 처리 중 오류:', error);
+		}
+	}
+
+	private restoreOriginalTexts() {
+		for (const [element, originalText] of this.originalTexts) {
+			element.textContent = originalText;
+		}
+		this.originalTexts.clear();
 	}
 
 	private handleZoom(direction: string) {

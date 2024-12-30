@@ -14,6 +14,11 @@
 		"64": "icons/icon64.png",
 		"128": "icons/icon128.png"
 	},
+	"permissions": [
+		"i18n",
+		"activeTab",
+		"scripting"
+	],
 	"background": {
 		"service_worker": "background.js",
 		"type": "module"
