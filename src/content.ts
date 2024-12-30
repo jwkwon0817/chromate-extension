@@ -197,12 +197,20 @@ class ContentVoiceRecognition {
 				}
 				break;
 			case 'refresh':
-				window.location.reload();
+				console.log('새로고침 실행');
+				try {
+					window.location.reload();
+				} catch (error) {
+					console.error('새로고침 중 오류:', error);
+				}
 				break;
-			case 'close': {
-				window.close();
+			case 'close':
+				try {
+					window.close();
+				} catch (error) {
+					console.error('창닫기 실행 중 오류:', error);
+				}
 				break;
-			}
 			default:
 				console.log('알 수 없는 액션:', result.action);
 		}

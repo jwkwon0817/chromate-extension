@@ -106,7 +106,7 @@ const HelpPage: FC<HelpPageProps> = ({ onBack }) => {
                         </li>
                         <li className="text-base text-gray-300 flex items-start">
                             <span className="mr-3 text-lg">•</span>
-                            <span>명령어는 자연스러운 한국어로 말씀해 주세요.</span>
+                            <span>발음을 또박또박 말해주시면 인식 정확도가 올라갑니다.</span>
                         </li>
                     </ul>
                 </section>
