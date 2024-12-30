@@ -42,11 +42,13 @@ class ContentVoiceRecognition {
 	private isActiveListening: boolean = false;
 	private readonly KEYWORD = '시리야';
 	private backgroundRecognition: any;
+	private lastHoveredElement: Element | null = null;
 
 	constructor() {
 		this.initializeRecognition();
 		this.initializeBackgroundRecognition();
 		this.requestMicPermission();
+		this.initializeMouseTracker();
 	}
 
 	private async requestMicPermission() {
@@ -63,6 +65,12 @@ class ContentVoiceRecognition {
 		} catch (error) {
 			console.error('마이크 권한 요청 중 오류 발생:', error);
 		}
+	}
+
+	private initializeMouseTracker() {
+		document.addEventListener('mousemove', (event) => {
+			this.lastHoveredElement = document.elementFromPoint(event.clientX, event.clientY);
+		});
 	}
 
 	private initializeBackgroundRecognition() {
@@ -146,7 +154,15 @@ class ContentVoiceRecognition {
 
 				if (event.results[current].isFinal) {
 					console.log('최종 인식된 명령어:', transcript);
-					await this.processCommand(transcript);
+
+					if (transcript.includes('클릭') || transcript.includes('눌러')) {
+						this.executeAction({
+							message: transcript,
+							action: 'click'
+						});
+					} else {
+						await this.processCommand(transcript);
+					}
 				}
 			};
 		}
@@ -196,6 +212,15 @@ class ContentVoiceRecognition {
 		console.log('액션 파라미터:', result.parameters);
 
 		switch (result.action) {
+			case 'click': {
+				if (this.lastHoveredElement) {
+					console.log('클릭할 요소:', this.lastHoveredElement);
+					(this.lastHoveredElement as HTMLElement).click();
+				} else {
+					console.log('클릭할 요소를 찾을 수 없습니다.');
+				}
+				break;
+			}
 			case 'scroll': {
 				const direction = typeof result.parameters === 'string' ? result.parameters : result.parameters?.direction;
 				this.handleScroll(direction || 'down');
