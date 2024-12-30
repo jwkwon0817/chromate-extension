@@ -1,5 +1,3 @@
-import {before} from "node:test";
-
 interface VoiceCommand {
 	message: string;
 	action: string;
@@ -40,10 +38,14 @@ document.body.appendChild(textVisualElement);
 
 class ContentVoiceRecognition {
 	private recognition: any;
-	private isRecognitionRunning: boolean = false; // 음성 인식 실행 여부 플래그
+	private isRecognitionRunning: boolean = false;
+	private isActiveListening: boolean = false;
+	private readonly KEYWORD = '시리야';
+	private backgroundRecognition: any;
 
 	constructor() {
 		this.initializeRecognition();
+		this.initializeBackgroundRecognition();
 		this.requestMicPermission();
 	}
 
@@ -63,6 +65,48 @@ class ContentVoiceRecognition {
 		}
 	}
 
+	private initializeBackgroundRecognition() {
+		if ('webkitSpeechRecognition' in window) {
+			this.backgroundRecognition = new window.webkitSpeechRecognition();
+			this.backgroundRecognition.continuous = true;
+			this.backgroundRecognition.interimResults = true;
+			this.backgroundRecognition.lang = 'ko-KR';
+
+			this.backgroundRecognition.onstart = () => {
+				console.log('백그라운드 음성 감지 시작');
+			};
+
+			this.backgroundRecognition.onend = () => {
+				console.log('백그라운드 음성 감지 종료');
+				if (!this.isActiveListening) {
+					setTimeout(() => {
+						this.backgroundRecognition.start();
+					}, 100);
+				}
+			};
+
+			this.backgroundRecognition.onresult = (event: any) => {
+				const current = event.resultIndex;
+				const transcript = event.results[current][0].transcript.trim().toLowerCase();
+
+				if (transcript.includes(this.KEYWORD.toLowerCase())) {
+					console.log('키워드 감지:', this.KEYWORD);
+					this.backgroundRecognition.stop();
+					this.startActiveListening();
+				}
+			};
+
+			this.backgroundRecognition.start();
+		}
+	}
+
+	private startActiveListening() {
+		this.isActiveListening = true;
+		textVisualElement.style.visibility = 'visible';
+		textElement.innerText = '명령어를 말씀해주세요';
+		this.startRecognition();
+	}
+
 	private initializeRecognition() {
 		if ('webkitSpeechRecognition' in window) {
 			this.recognition = new window.webkitSpeechRecognition();
@@ -71,45 +115,40 @@ class ContentVoiceRecognition {
 			this.recognition.lang = 'ko-KR';
 
 			this.recognition.onstart = () => {
-				console.log('음성 인식 시작');
-				this.isRecognitionRunning = true; // 실행 상태 업데이트
+				console.log('명령어 인식 시작');
+				this.isRecognitionRunning = true;
 			};
 
 			this.recognition.onend = () => {
-				console.log('음성 인식 종료');
-				this.isRecognitionRunning = false; // 실행 상태 업데이트
-				this.restartRecognition();
+				console.log('명령어 인식 종료');
+				this.isRecognitionRunning = false;
+				this.isActiveListening = false;
+
+				setTimeout(() => {
+					textVisualElement.style.visibility = 'hidden';
+					textElement.innerText = '';
+					this.backgroundRecognition.start();
+				}, 2000);
 			};
 
 			this.recognition.onerror = (event: any) => {
-				console.error('음성 인식 오류:', event.error);
-				this.isRecognitionRunning = false; // 실행 상태 업데이트
-				this.restartRecognition();
+				console.error('명령어 인식 오류:', event.error);
+				this.isRecognitionRunning = false;
+				this.isActiveListening = false;
+				this.backgroundRecognition.start();
 			};
 
 			this.recognition.onresult = async (event: any) => {
 				const current = event.resultIndex;
 				const transcript = event.results[current][0].transcript;
 
-				textVisualElement.style.visibility = 'visible';
-
-				console.log('음성 인식된 내용:', transcript);
-
 				textElement.innerText = transcript.length > 16 ? transcript.slice(-16) : transcript;
 
 				if (event.results[current].isFinal) {
-					console.log('최종 인식된 내용:', transcript);
-
-					setTimeout(() => {
-						textElement.innerText = '';
-						textVisualElement.style.visibility = 'hidden';
-					}, 2000);
-
+					console.log('최종 인식된 명령어:', transcript);
 					await this.processCommand(transcript);
 				}
 			};
-
-			this.startRecognition();
 		}
 	}
 
@@ -118,15 +157,11 @@ class ContentVoiceRecognition {
 			try {
 				this.recognition.start();
 			} catch (error) {
-				console.error('음성 인식 시작 실패:', error);
+				console.error('명령어 인식 시작 실패:', error);
+				this.isActiveListening = false;
+				this.backgroundRecognition.start();
 			}
 		}
-	}
-
-	private restartRecognition() {
-		setTimeout(() => {
-			this.startRecognition();
-		}, 1000); // 1초 후 재시작 시도
 	}
 
 	private async processCommand(command: string) {
@@ -177,7 +212,7 @@ class ContentVoiceRecognition {
 						? result.parameters.query || Object.values(result.parameters).join(' ')
 						: '';
 				console.log('검색어:', searchQuery);
-				window.location.href = `https://www.google.com/search?q=${ encodeURIComponent(searchQuery) }`;
+				window.location.href = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
 				break;
 			}
 			case 'backward':
