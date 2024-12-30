@@ -11,6 +11,9 @@
     "clean": "rm -rf dist/*"
   },
   "dependencies": {
+    "@tensorflow-models/face-landmarks-detection": "^1.0.6",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
     "@types/chrome": "^0.0.287",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",

@@ -154,15 +154,7 @@ class ContentVoiceRecognition {
 
 				if (event.results[current].isFinal) {
 					console.log('최종 인식된 명령어:', transcript);
-
-					if (transcript.includes('클릭') || transcript.includes('눌러')) {
-						this.executeAction({
-							message: transcript,
-							action: 'click'
-						});
-					} else {
-						await this.processCommand(transcript);
-					}
+					await this.processCommand(transcript, this.lastHoveredElement);
 				}
 			};
 		}
@@ -180,9 +172,23 @@ class ContentVoiceRecognition {
 		}
 	}
 
-	private async processCommand(command: string) {
+	private async processCommand(command: string, targetElement: Element | null) {
 		try {
 			console.log('서버로 전송하는 명령어:', command);
+
+			let elementInfo = null;
+			if (targetElement) {
+				const element = targetElement as HTMLElement;
+				elementInfo = {
+					tagName: element.tagName.toLowerCase(),
+					className: element.className,
+					id: element.id,
+					text: element.textContent?.trim(),
+					href: (element as HTMLAnchorElement).href,
+					type: element.getAttribute('type'),
+					role: element.getAttribute('role')
+				};
+			}
 
 			const response = await fetch('https://chromate.sunrin.kr/api/v1/chat', {
 				method: 'POST',
@@ -192,6 +198,7 @@ class ContentVoiceRecognition {
 				},
 				body: JSON.stringify({
 					message: command,
+					elementInfo: elementInfo
 				}),
 			});
 
