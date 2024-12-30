@@ -219,6 +219,15 @@ class ContentVoiceRecognition {
 		console.log('액션 파라미터:', result.parameters);
 
 		switch (result.action) {
+			case 'zoom': {
+				const direction = typeof result.parameters === 'string' ? result.parameters : result.parameters?.direction;
+				this.handleZoom(direction || 'in');
+				break;
+			}
+			case 'reset': {
+				this.handleZoom('reset');
+				break;
+			}
 			case 'click': {
 				if (this.lastHoveredElement) {
 					console.log('클릭할 요소:', this.lastHoveredElement);
@@ -300,6 +309,28 @@ class ContentVoiceRecognition {
 				behavior: 'smooth',
 			});
 		}
+	}
+
+	private handleZoom(direction: string) {
+		console.log('줌 방향:', direction);
+		if (direction.toLowerCase() === 'reset') {
+			document.body.style.removeProperty('zoom');
+			console.log('줌 레벨 초기화: 기본값');
+			return;
+		}
+
+		const currentZoom = document.body.style.zoom ? parseFloat(document.body.style.zoom) : 1;
+		const zoomStep = 0.3;
+
+		let newZoom: number;
+		if (direction.toLowerCase() === 'in') {
+			newZoom = currentZoom + zoomStep;
+		} else {
+			newZoom = Math.max(0.3, currentZoom - zoomStep);
+		}
+
+		document.body.style.zoom = newZoom.toString();
+		console.log('현재 줌 레벨:', newZoom);
 	}
 }
 
