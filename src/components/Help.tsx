@@ -11,33 +11,36 @@ const HelpPage: FC<HelpPageProps> = ({ onBack }) => {
         {
             category: "검색",
             examples: [
-                "구글에서 날씨 검색해줘",
-                "오늘 주식 시장 검색해줘",
-                "맛집 찾아줘"
+                "구글에서 뉴스 검색해줘",
+                "오늘 날씨 알려줘",
+                "근처 카페 찾아줘"
             ]
         },
         {
             category: "페이지 이동",
             examples: [
-                "네이버로 이동해줘",
-                "유튜브 열어줘",
-                "구글로 이동"
+                "트위터로 이동해줘",
+                "페이스북 열어줘",
+                "다음으로 이동"
             ]
         },
         {
             category: "스크롤",
             examples: [
-                "위로 올려줘",
-                "아래로 내려줘",
-                "맨 위로 올려줘"
+                "스크롤 위로 해줘",
+                "스크롤 아래로 내려줘",
+                "페이지 맨 위로 올려줘"
             ]
         },
         {
             category: "브라우저 제어",
             examples: [
-                "뒤로 가줘",
-                "앞으로 가줘",
-                "새로고침 해줘"
+                "이전 페이지로 가줘",
+                "다음 페이지로 가줘",
+                "페이지 새로고침",
+                "화면 확대/축소",
+                "페이지 번역",
+                "현재 위치 클릭"
             ]
         }
     ];
@@ -62,12 +65,12 @@ const HelpPage: FC<HelpPageProps> = ({ onBack }) => {
                 <h1 className="text-3xl font-bold mb-8">음성 명령어 가이드</h1>
 
                 <section className="mb-8">
-                    <h2 className="text-2xl font-bold text-[#3AFC95] mb-4">시작하기</h2>
+                    <h2 className="text-2xl font-bold text-[#3AFC95] mb-4">사용 방법</h2>
                     <div className="bg-white/5 rounded-xl p-5">
                         <p className="text-base text-gray-300 space-y-3 leading-relaxed">
-                            1. START 버튼을 클릭하여 음성 인식을 시작합니다.<br />
-                            2. "시리야"라고 부른 후 원하는 명령어를 말합니다.<br />
-                            3. 음성 인식을 중지하려면 STOP 버튼을 클릭합니다.
+                            1. 음성 인식을 시작하려면 START 버튼을 누르세요.<br />
+                            2. "시리야"라고 말한 후 원하는 명령어를 입력하세요.<br />
+                            3. 음성 인식을 중단하려면 STOP 버튼을 누르세요.
                         </p>
                     </div>
                 </section>
@@ -98,15 +101,15 @@ const HelpPage: FC<HelpPageProps> = ({ onBack }) => {
                     <ul className="space-y-3">
                         <li className="text-base text-gray-300 flex items-start">
                             <span className="mr-3 text-lg">•</span>
-                            <span>조용한 환경에서 사용하면 더 정확한 인식이 가능합니다.</span>
+                            <span>조용한 환경에서 사용하면 인식 정확도가 높아집니다.</span>
                         </li>
                         <li className="text-base text-gray-300 flex items-start">
                             <span className="mr-3 text-lg">•</span>
-                            <span>마이크 사용 권한을 허용해야 음성 인식이 가능합니다.</span>
+                            <span>마이크 사용 권한을 반드시 허용하세요.</span>
                         </li>
                         <li className="text-base text-gray-300 flex items-start">
                             <span className="mr-3 text-lg">•</span>
-                            <span>발음을 또박또박 말해주시면 인식 정확도가 올라갑니다.</span>
+                            <span>정확한 발음을 통해 인식률을 높일 수 있습니다.</span>
                         </li>
                     </ul>
                 </section>
